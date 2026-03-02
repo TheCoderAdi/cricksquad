@@ -7,7 +7,7 @@ import { GiCricketBat } from 'react-icons/gi'
 
 const Navbar = () => {
     const { user } = useAuthStore()
-    const { groups, currentGroup, setCurrentGroup } = useGroupStore()
+    const { groups, currentGroup, setCurrentGroup, fetchGroups } = useGroupStore()
     const [showDropdown, setShowDropdown] = useState(false)
 
     return (
@@ -25,7 +25,17 @@ const Navbar = () => {
                 {currentGroup && (
                     <div className="relative">
                         <button
-                            onClick={() => setShowDropdown(!showDropdown)}
+                            onClick={async () => {
+                                const willOpen = !showDropdown
+                                setShowDropdown(willOpen)
+                                if (willOpen) {
+                                    try {
+                                        await fetchGroups()
+                                    } catch (e) {
+                                        console.log(e)
+                                    }
+                                }
+                            }}
                             className="flex items-center gap-1 px-3 py-1.5 bg-primary-50 rounded-lg text-sm font-medium text-primary-700"
                         >
                             {currentGroup.name}

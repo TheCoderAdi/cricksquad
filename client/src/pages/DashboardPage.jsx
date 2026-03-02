@@ -18,7 +18,7 @@ import { motion as Motion } from 'framer-motion'
 const DashboardPage = () => {
     const navigate = useNavigate()
     const { user } = useAuthStore()
-    const { currentGroup, groups, fetchGroups } = useGroupStore()
+    const { currentGroup, groups, fetchGroups, fetchGroupDetails } = useGroupStore()
     const [upcomingMatch, setUpcomingMatch] = useState(null)
     const [lastMatch, setLastMatch] = useState(null)
     const [progressMatch, setProgressMatch] = useState(null)
@@ -72,7 +72,14 @@ const DashboardPage = () => {
     useEffect(() => {
         if (currentGroup) {
             startTransition(() => {
-                loadDashboardData();
+                (async () => {
+                    try {
+                        await fetchGroupDetails(currentGroup._id)
+                    } catch (e) {
+                        console.log(e)
+                    }
+                    loadDashboardData()
+                })()
             })
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
