@@ -271,7 +271,7 @@ const PollsPage = () => {
                         />
                     </div>
 
-                    <button onClick={handleCreatePoll} className={`btn-primary w-full ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!newPoll.question.trim() || newPoll.options.filter(o => o.trim()).length < 2}>
+                    <button onClick={handleCreatePoll} className={`btn-primary w-full ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!newPoll.question.trim() || newPoll.options.filter(o => o.trim()).length < 2 || isLoading}>
                         {isLoading ? 'Creating...' : '📊 Create Poll'}
                     </button>
                 </div>
@@ -279,7 +279,7 @@ const PollsPage = () => {
 
             {/* Delete Confirmation Modal */}
             <Modal isOpen={showDeleteConfirm} onClose={() => { setShowDeleteConfirm(false); setPollToDelete(null); }} title="Confirm delete">
-                <div className="space-y-4">
+                <div className="space-y-4 mb-16">
                     <p>Are you sure you want to delete this poll? This action cannot be undone.</p>
                     <div className="flex justify-end gap-2">
                         <button onClick={() => { setShowDeleteConfirm(false); setPollToDelete(null); }} className="btn-secondary">Cancel</button>
