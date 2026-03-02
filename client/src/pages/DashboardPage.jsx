@@ -4,7 +4,6 @@ import { useAuthStore } from '../store/authStore'
 import { useGroupStore } from '../store/groupStore'
 import matchService from '../services/matchService'
 import aiService from '../services/aiService'
-import venueService from '../services/venueService'
 import LoadingSpinner from '../components/common/LoadingSpinner'
 import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -24,7 +23,6 @@ const DashboardPage = () => {
     const [lastMatch, setLastMatch] = useState(null)
     const [progressMatch, setProgressMatch] = useState(null)
     const [aiInsight, setAiInsight] = useState(null)
-    const [venues, setVenues] = useState([])
     const [isLoading, setIsLoading] = useState(false)
     const [rsvpLoading, setRsvpLoading] = useState(false)
 
@@ -62,12 +60,6 @@ const DashboardPage = () => {
                 setAiInsight(insight.data)
             } catch (e) {
                 console.warn('Failed to load AI insights:', e)
-            }
-            try {
-                const { data: v } = await venueService.getByGroup(currentGroup._id)
-                setVenues(v.data || [])
-            } catch (err) {
-                console.warn('Failed to load venues:', err)
             }
         } catch (error) {
             console.error('Dashboard load error:', error)
@@ -279,7 +271,7 @@ const DashboardPage = () => {
                         { icon: <HiCurrencyRupee />, label: 'Dues', to: upcomingMatch ? `/expenses/${upcomingMatch._id}` : '#', color: 'bg-green-100 text-green-600' },
                         { icon: <HiChartBar />, label: 'Stats', to: '/leaderboard', color: 'bg-purple-100 text-purple-600' },
                         { icon: <HiSpeakerphone />, label: 'Announce', to: '/announcements', color: 'bg-orange-100 text-orange-600' },
-                        { icon: <HiLocationMarker />, label: 'Venues', to: venues && venues.length > 0 && venues[0]._id ? `/venues/${venues[0]._id}` : '/venues', color: 'bg-rose-100 text-rose-600' },
+                        { icon: <HiLocationMarker />, label: 'Venues', to: upcomingMatch ? `/venue/${upcomingMatch._id}` : '#', color: 'bg-rose-100 text-rose-600' },
                         { icon: <HiPhotograph />, label: 'Gallery', to: upcomingMatch ? `/gallery/${upcomingMatch._id}` : '#', color: 'bg-pink-100 text-pink-600' },
                         { icon: '📊', label: 'Scorecard', to: progressMatch ? `/scorecard/${progressMatch._id}` : '#', color: 'bg-yellow-100 text-yellow-600' },
                         { icon: <HiCheck />, label: 'RSVP', to: upcomingMatch ? `/rsvp/${upcomingMatch._id}` : '#', color: 'bg-green-100 text-green-600' },
@@ -344,7 +336,7 @@ const DashboardPage = () => {
                         <div className="bg-yellow-50 rounded-xl px-4 py-2.5 flex items-center gap-2">
                             <span className="text-lg">⭐</span>
                             <span className="text-sm font-medium text-yellow-800">
-                                POTM: {lastMatch.scorecard.playerOfMatch.name}
+                                POTM: {lastMatch.scorecard.playerOfMatch?._id === user?._id ? `${lastMatch.scorecard.playerOfMatch?.name} (You)` : lastMatch.scorecard.playerOfMatch?.name || 'N/A'}
                             </span>
                         </div>
                     )}
