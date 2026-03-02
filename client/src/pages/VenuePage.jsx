@@ -218,7 +218,7 @@ const VenuePage = () => {
             )}
 
             {/* Admin: Manage Venues */}
-            {typeof isCurrentUserAdmin === 'function' && isCurrentUserAdmin() && (
+            {isCurrentUserAdmin() && (
                 <div>
                     <button
                         onClick={openManage}
@@ -230,7 +230,7 @@ const VenuePage = () => {
             )}
 
             <Modal isOpen={showManage} onClose={() => { setShowManage(false); resetForm(); setEditingId(null); }} title="Manage Venues">
-                <div className="space-y-4">
+                <div className="space-y-4 mb-16">
                     <div>
                         <h4 className="font-bold mb-2">Existing Venues</h4>
                         {venuesList.length === 0 ? (

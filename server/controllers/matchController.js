@@ -104,6 +104,7 @@ const getGroupMatches = async (req, res, next) => {
         const matches = await Match.find(query)
             .populate('venue', 'name address')
             .populate('rsvps.player', 'name avatar')
+            .populate('scorecard.playerOfMatch', 'name')
             .sort('-date')
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
