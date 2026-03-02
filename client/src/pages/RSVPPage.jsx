@@ -9,10 +9,12 @@ import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { HiCheck, HiX, HiQuestionMarkCircle, HiClock, HiBell } from 'react-icons/hi'
 import { startTransition } from 'react'
+import { useGroupStore } from '../store/groupStore'
 
 const RSVPPage = () => {
     const { matchId } = useParams()
     const { user } = useAuthStore()
+    const { isCurrentUserAdmin } = useGroupStore()
     const [match, setMatch] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
     const [rsvpLoading, setRsvpLoading] = useState(false)
@@ -185,27 +187,30 @@ const RSVPPage = () => {
                         <HiQuestionMarkCircle className="text-yellow-500" />
                         Maybe ({maybePlayers.length})
                     </h3>
-                    <div className="space-y-2">
-                        {maybePlayers.map((rsvp, i) => (
-                            <div key={i} className="flex items-center justify-between py-2">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-full bg-yellow-100 flex items-center justify-center">
-                                        <span className="text-sm font-bold text-yellow-700">
-                                            {rsvp.player?.name?.charAt(0)}
-                                        </span>
+                    {
+                        isCurrentUserAdmin() &&
+                        <div className="space-y-2">
+                            {maybePlayers.map((rsvp, i) => (
+                                <div key={i} className="flex items-center justify-between py-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-full bg-yellow-100 flex items-center justify-center">
+                                            <span className="text-sm font-bold text-yellow-700">
+                                                {rsvp.player?.name?.charAt(0)}
+                                            </span>
+                                        </div>
+                                        <p className="font-medium text-sm text-gray-900">{rsvp.player?.name}</p>
                                     </div>
-                                    <p className="font-medium text-sm text-gray-900">{rsvp.player?.name}</p>
+                                    <button
+                                        onClick={() => handleSmartReminder(rsvp.player?._id)}
+                                        disabled={reminderLoading[rsvp.player?._id]}
+                                        className="text-xs bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-lg font-medium hover:bg-yellow-100 transition-colors"
+                                    >
+                                        {reminderLoading[rsvp.player?._id] ? '...' : '🔔 Nudge'}
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => handleSmartReminder(rsvp.player?._id)}
-                                    disabled={reminderLoading[rsvp.player?._id]}
-                                    className="text-xs bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-lg font-medium hover:bg-yellow-100 transition-colors"
-                                >
-                                    {reminderLoading[rsvp.player?._id] ? '...' : '🔔 Nudge'}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    }
                 </Motion.div>
             )}
 

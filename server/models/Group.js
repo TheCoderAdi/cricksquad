@@ -85,6 +85,13 @@ const groupSchema = new mongoose.Schema({
         startDate: { type: Date, default: Date.now },
         matchesPlayed: { type: Number, default: 0 }
     }
+    ,
+    // AI cached results for group-wide analytics
+    aiSeasonAnalytics: {
+        data: { type: Object },
+        lastGeneratedAt: Date,
+        generatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    }
 }, {
     timestamps: true
 });

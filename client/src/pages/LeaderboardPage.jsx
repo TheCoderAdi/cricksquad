@@ -16,10 +16,11 @@ const categories = [
 const medalEmojis = ['🥇', '🥈', '🥉']
 
 const LeaderboardPage = () => {
-    const { currentGroup } = useGroupStore()
+    const { currentGroup, isCurrentUserAdmin } = useGroupStore()
     const [activeCategory, setActiveCategory] = useState('runs')
     const [leaderboard, setLeaderboard] = useState([])
     const [aiSummary, setAiSummary] = useState(null)
+    const [aiRegenerating, setAiRegenerating] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const loadLeaderboard = async () => {
         setIsLoading(true)
@@ -58,6 +59,18 @@ const LeaderboardPage = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentGroup])
 
+    const handleRegenerateAISummary = async () => {
+        if (!currentGroup) return
+        setAiRegenerating(true)
+        try {
+            const { data } = await aiService.seasonAnalytics(currentGroup._id, { regenerate: true })
+            if (data?.success) setAiSummary(data.data)
+            else toast.error(data?.message || 'Failed to regenerate AI summary')
+        } catch (e) {
+            toast.error(`${e.response?.data?.message || 'Failed to regenerate AI summary'}`)
+        } finally { setAiRegenerating(false) }
+    }
+
     const getStatValue = (entry) => {
         const cat = categories.find(c => c.key === activeCategory)
         if (!cat) return 0
@@ -75,6 +88,23 @@ const LeaderboardPage = () => {
                 <h1 className="text-xl font-display font-bold text-gray-900">🏆 Leaderboard</h1>
                 <p className="text-sm text-gray-500 mt-1">{currentGroup?.name} — Season Stats</p>
             </Motion.div>
+
+            {/* AI Season Analytics */}
+            {aiSummary && (
+                <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="card bg-gradient-to-br from-purple-50 to-blue-50 !border-purple-100">
+                    <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-bold text-purple-900 text-sm">🤖 AI Summary</h3>
+                        {isCurrentUserAdmin() && (
+                            <button
+                                onClick={handleRegenerateAISummary}
+                                className="ml-2 text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded"
+                                disabled={aiRegenerating}
+                            >{aiRegenerating ? 'Regenerating...' : 'Regenerate'}</button>
+                        )}
+                    </div>
+                    <p className="text-sm text-purple-800 leading-relaxed">{aiSummary.seasonSummary || aiSummary.funFacts?.[0]}</p>
+                </Motion.div>
+            )}
 
             {/* Category Tabs */}
             <Motion.div

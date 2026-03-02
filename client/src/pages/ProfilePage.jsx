@@ -17,6 +17,7 @@ const ProfilePage = () => {
     const { currentGroup } = useGroupStore()
     const [stats, setStats] = useState(null)
     const [aiInsight, setAiInsight] = useState(null)
+    const [aiRegenerating, setAiRegenerating] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [editing, setEditing] = useState(false)
     const [editData, setEditData] = useState({})
@@ -52,6 +53,18 @@ const ProfilePage = () => {
         })
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profileId])
+
+    const handleRegeneratePlayerInsight = async () => {
+        if (!currentGroup) return toast.error('No group selected')
+        setAiRegenerating(true)
+        try {
+            const { data } = await aiService.playerInsight(profileId, currentGroup._id, { regenerate: true })
+            if (data?.success) setAiInsight(data.data)
+            else toast.error(data?.message || 'Failed to regenerate player insight')
+        } catch (e) {
+            toast.error(`${e.response?.data?.message || 'Failed to regenerate player insight'}`)
+        } finally { setAiRegenerating(false) }
+    }
 
 
     const handleSaveSkills = async () => {
@@ -233,7 +246,14 @@ const ProfilePage = () => {
                     transition={{ delay: 0.3 }}
                     className="card bg-gradient-to-br from-purple-50 to-blue-50 !border-purple-100"
                 >
-                    <h3 className="font-bold text-purple-900 mb-3">🤖 AI Analysis</h3>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-bold text-purple-900">🤖 AI Analysis</h3>
+                        <button
+                            onClick={handleRegeneratePlayerInsight}
+                            className="text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded"
+                            disabled={aiRegenerating}
+                        >{aiRegenerating ? 'Regenerating...' : 'Regenerate'}</button>
+                    </div>
                     <p className="text-sm text-purple-800 mb-3">{aiInsight.overallAssessment}</p>
 
                     {aiInsight.funComparison && (

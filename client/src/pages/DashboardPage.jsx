@@ -18,11 +18,12 @@ import { motion as Motion } from 'framer-motion'
 const DashboardPage = () => {
     const navigate = useNavigate()
     const { user } = useAuthStore()
-    const { currentGroup, groups, fetchGroups, fetchGroupDetails } = useGroupStore()
+    const { currentGroup, groups, fetchGroups, fetchGroupDetails, isCurrentUserAdmin } = useGroupStore()
     const [upcomingMatch, setUpcomingMatch] = useState(null)
     const [lastMatch, setLastMatch] = useState(null)
     const [progressMatch, setProgressMatch] = useState(null)
     const [aiInsight, setAiInsight] = useState(null)
+    const [aiRegenerating, setAiRegenerating] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [rsvpLoading, setRsvpLoading] = useState(false)
 
@@ -368,6 +369,24 @@ const DashboardPage = () => {
                     <div className="flex items-center gap-2 mb-3">
                         <HiLightningBolt className="text-purple-600" />
                         <h2 className="font-bold text-purple-900 text-sm">🤖 AI Insight</h2>
+                        {isCurrentUserAdmin() && (
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        setAiRegenerating(true)
+                                        const { data } = await aiService.seasonAnalytics(currentGroup._id, { regenerate: true })
+                                        if (data?.success) setAiInsight(data.data)
+                                        toast.success('Season analytics regenerated')
+                                    } catch {
+                                        toast.error('Failed to regenerate analytics')
+                                    } finally { setAiRegenerating(false) }
+                                }}
+                                className="ml-2 text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded"
+                                disabled={aiRegenerating}
+                            >
+                                {aiRegenerating ? 'Regenerating...' : 'Regenerate'}
+                            </button>
+                        )}
                     </div>
                     <p className="text-sm text-purple-800 leading-relaxed">
                         {aiInsight.seasonSummary || aiInsight.funFacts?.[0] || 'Analyzing your group data...'}

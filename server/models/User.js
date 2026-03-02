@@ -96,6 +96,13 @@ const userSchema = new mongoose.Schema({
         ref: 'Group'
     }],
 
+    // AI cached insights per-group
+    aiInsights: [{
+        group: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },
+        data: { type: Object },
+        lastGeneratedAt: Date
+    }],
+
     // OTP for phone verification
     otp: {
         code: String,

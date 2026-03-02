@@ -145,6 +145,8 @@ const matchSchema = new mongoose.Schema({
     // AI Generated Content
     aiSummary: { type: String, default: '' },
     aiHighlights: [{ type: String }],
+    // AI cached suggestions
+    aiPotmCandidates: { type: Object },
 
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,

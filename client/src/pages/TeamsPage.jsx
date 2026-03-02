@@ -11,7 +11,7 @@ import { useGroupStore } from '../store/groupStore'
 
 const TeamsPage = () => {
     const { matchId } = useParams()
-    const { currentGroup } = useGroupStore()
+    const { currentGroup, isCurrentUserAdmin } = useGroupStore()
     const [match, setMatch] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
     const [generating, setGenerating] = useState(false)
@@ -138,23 +138,27 @@ const TeamsPage = () => {
                         )}
                     </button>
 
-                    <button
-                        onClick={handleAIGenerate}
-                        disabled={aiGenerating}
-                        className="btn-secondary w-full flex items-center justify-center gap-2"
-                    >
-                        {aiGenerating ? (
-                            <>
-                                <div className="w-5 h-5 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin" />
-                                AI Analyzing...
-                            </>
-                        ) : (
-                            <>
-                                <HiLightningBolt className="text-purple-600" />
-                                🤖 AI Smart Balance
-                            </>
-                        )}
-                    </button>
+                    {
+                        isCurrentUserAdmin() && (
+                            <button
+                                onClick={handleAIGenerate}
+                                disabled={aiGenerating}
+                                className="btn-secondary w-full flex items-center justify-center gap-2"
+                            >
+                                {aiGenerating ? (
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin" />
+                                        AI Analyzing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <HiLightningBolt className="text-purple-600" />
+                                        🤖 AI Smart Balance
+                                    </>
+                                )}
+                            </button>
+                        )
+                    }
                 </Motion.div>
             )}
 

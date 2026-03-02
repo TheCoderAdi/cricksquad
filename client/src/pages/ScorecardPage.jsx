@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, startTransition } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
 import matchService from '../services/matchService'
 import aiService from '../services/aiService'
+import { useGroupStore } from '../store/groupStore'
 import LoadingSpinner from '../components/common/LoadingSpinner'
 import toast from 'react-hot-toast'
 import { HiPlus, HiLightningBolt } from 'react-icons/hi'
-import { startTransition } from 'react'
+
 
 const ScorecardPage = () => {
     const { matchId } = useParams()
@@ -15,9 +16,12 @@ const ScorecardPage = () => {
     const [_showEntryForm, setShowEntryForm] = useState(false)
     const [aiSummary, setAiSummary] = useState(null)
     const [aiLoading, setAiLoading] = useState(false)
+    const { isCurrentUserAdmin } = useGroupStore()
+    const [aiRegeneratingMatch, setAiRegeneratingMatch] = useState(false)
     const [potmSuggestion, setPotmSuggestion] = useState(null)
     const [seasonAnalytics, setSeasonAnalytics] = useState(null)
     const [seasonLoading, setSeasonLoading] = useState(false)
+    const [seasonRegenerating, setSeasonRegenerating] = useState(false)
 
     // Scorecard form state
     const [scoreForm, setScoreForm] = useState({
@@ -134,6 +138,19 @@ const ScorecardPage = () => {
         setAiLoading(false)
     }
 
+    const handleRegenerateAISummary = async () => {
+        setAiRegeneratingMatch(true)
+        try {
+            const { data } = await aiService.matchSummary(matchId, { regenerate: true })
+            setAiSummary(data.data)
+            // reload match to get stored aiSummary
+            await loadMatch()
+            toast.success('AI summary regenerated')
+        } catch (e) {
+            toast.error(`${e.response?.data?.message || 'Failed to regenerate summary'}`)
+        } finally { setAiRegeneratingMatch(false) }
+    }
+
     const handleAIPotm = async () => {
         try {
             const { data } = await aiService.potmSuggestion(matchId)
@@ -158,6 +175,23 @@ const ScorecardPage = () => {
             toast.error(`${error.response?.data?.message || 'Failed to fetch season analytics'}`)
         }
         setSeasonLoading(false)
+    }
+
+    const handleRegenerateSeasonAnalytics = async () => {
+        if (!match || !match.group) return toast.error('No group available for analytics')
+        setSeasonRegenerating(true)
+        try {
+            const { data } = await aiService.seasonAnalytics(match.group, { regenerate: true })
+            if (data?.success) {
+                setSeasonAnalytics(data.data)
+                toast.success('Season analytics regenerated')
+            } else {
+                toast.error(data?.message || 'Failed to regenerate analytics')
+            }
+        } catch (error) {
+            toast.error(`${error.response?.data?.message || 'Failed to regenerate season analytics'}`)
+        }
+        setSeasonRegenerating(false)
     }
 
     if (isLoading) return <LoadingSpinner message="Loading scorecard..." />
@@ -221,6 +255,28 @@ const ScorecardPage = () => {
                                 <span className="bg-yellow-400 text-yellow-900 px-4 py-1.5 rounded-full text-xs font-bold">
                                     ⭐ POTM: {match.scorecard.playerOfMatch?.name}
                                 </span>
+                            </div>
+                        )}
+                        {/* AI Match Summary display (cached or generated) */}
+                        {(match.aiSummary || aiSummary) && (
+                            <div className="mt-4 card">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="font-bold">AI Match Report</h4>
+                                    <button
+                                        onClick={handleRegenerateAISummary}
+                                        className="text-xs bg-yellow-50 px-2 py-1 rounded"
+                                        disabled={!isCurrentUserAdmin?.() || aiRegeneratingMatch}
+                                    >{aiRegeneratingMatch ? 'Regenerating...' : 'Regenerate'}</button>
+                                </div>
+                                <p className="text-sm text-gray-700 whitespace-pre-line">{aiSummary?.summary || match.aiSummary}</p>
+                                {(aiSummary?.highlights || match.aiHighlights)?.length > 0 && (
+                                    <div className="mt-3">
+                                        <h5 className="font-bold text-sm mb-2">Highlights</h5>
+                                        <ul className="list-disc ml-5 text-sm">
+                                            {(aiSummary?.highlights || match.aiHighlights).map((h, i) => <li key={i}>{h}</li>)}
+                                        </ul>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </Motion.div>
@@ -368,6 +424,15 @@ const ScorecardPage = () => {
                                 className="btn-outline w-full flex items-center justify-center gap-2"
                             >
                                 {seasonLoading ? 'Generating analytics...' : '🔎 Generate Season Analytics'}
+                            </button>
+
+                            {/* Regenerate (visible to all, disabled for non-admins) */}
+                            <button
+                                onClick={handleRegenerateSeasonAnalytics}
+                                disabled={!isCurrentUserAdmin?.() || seasonRegenerating}
+                                className="mt-2 w-full text-xs bg-yellow-50 text-yellow-700 px-2 py-2 rounded"
+                            >
+                                {seasonRegenerating ? 'Regenerating...' : 'Regenerate'}
                             </button>
 
                             {seasonAnalytics && (

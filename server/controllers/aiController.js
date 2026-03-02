@@ -2,6 +2,7 @@ const { generateContent } = require('../config/gemini');
 const Match = require('../models/Match');
 const User = require('../models/User');
 const Group = require('../models/Group');
+const sendEmail = require('../utils/sendEmail');
 
 const parseAIJsonResponse = async (prompt) => {
     const response = await generateContent(prompt);
@@ -80,23 +81,16 @@ Respond in this exact JSON format:
 Return ONLY valid JSON, no markdown or extra text.
 `;
 
-        let aiResult;
+        // aiBalanceTeams: always generate teams on-demand (no persistent caching needed)
         try {
-            aiResult = await parseAIJsonResponse(prompt);
+            const aiResult = await parseAIJsonResponse(prompt);
+            return res.status(200).json({ success: true, data: aiResult });
         } catch (parseError) {
             if (parseError.message === 'AI_INVALID_FORMAT') {
-                return res.status(500).json({
-                    success: false,
-                    message: 'AI returned invalid format. Please try again.'
-                });
+                return res.status(500).json({ success: false, message: 'AI returned invalid format. Please try again.' });
             }
             throw parseError;
         }
-
-        res.status(200).json({
-            success: true,
-            data: aiResult
-        });
     } catch (error) {
         next(error);
     }
@@ -184,6 +178,27 @@ Write in this JSON format:
 Return ONLY valid JSON.
 `;
 
+        // If a cached summary exists and client did not request regeneration, return it
+        const regenerate = !!req.body.regenerate;
+        if (!regenerate && match.aiSummary) {
+            return res.status(200).json({
+                success: true,
+                data: {
+                    summary: match.aiSummary,
+                    highlights: match.aiHighlights
+                }
+            });
+        }
+
+        // If regenerate requested, ensure caller is a group admin
+        if (regenerate) {
+            const group = await Group.findById(match.group);
+            const member = group.members.find(m => String(m.user) === String(req.user._id));
+            if (!member || member.role !== 'admin') {
+                return res.status(403).json({ success: false, message: 'Only group admins can regenerate AI content' });
+            }
+        }
+
         let aiResult;
         try {
             aiResult = await parseAIJsonResponse(prompt);
@@ -201,10 +216,7 @@ Return ONLY valid JSON.
         match.aiHighlights = aiResult.highlights;
         await match.save();
 
-        res.status(200).json({
-            success: true,
-            data: aiResult
-        });
+        res.status(200).json({ success: true, data: aiResult });
     } catch (error) {
         next(error);
     }
@@ -298,6 +310,23 @@ Respond in this JSON format:
 Return ONLY valid JSON.
 `;
 
+        const regenerate = !!req.body.regenerate;
+
+        // check cached insight on the user document for this group
+        const existing = (user.aiInsights || []).find(x => String(x.group) === String(groupId));
+        if (!regenerate && existing && existing.data) {
+            return res.status(200).json({ success: true, data: existing.data });
+        }
+
+        // if regeneration requested, ensure caller is a group admin
+        if (regenerate) {
+            const group = await Group.findById(groupId);
+            const member = group.members.find(m => String(m.user) === String(req.user._id));
+            if (!member || member.role !== 'admin') {
+                return res.status(403).json({ success: false, message: 'Only group admins can regenerate AI content' });
+            }
+        }
+
         let aiResult;
         try {
             aiResult = await parseAIJsonResponse(prompt);
@@ -311,10 +340,21 @@ Return ONLY valid JSON.
             throw parseError;
         }
 
-        res.status(200).json({
-            success: true,
-            data: aiResult
-        });
+        // store into user's aiInsights for this group (best-effort)
+        try {
+            const idx = (user.aiInsights || []).findIndex(x => String(x.group) === String(groupId));
+            const payload = { group: groupId, data: aiResult, lastGeneratedAt: new Date(), generatedBy: req.user._id };
+            if (idx >= 0) {
+                user.aiInsights[idx] = payload;
+            } else {
+                user.aiInsights = [...(user.aiInsights || []), payload];
+            }
+            await user.save();
+        } catch (e) {
+            console.warn('Failed to save player AI insight', e);
+        }
+
+        res.status(200).json({ success: true, data: aiResult });
     } catch (error) {
         next(error);
     }
@@ -386,23 +426,40 @@ Respond in JSON format:
 Return ONLY valid JSON.
 `;
 
+        const regenerate = !!req.body.regenerate;
+
+        // If cached POTM candidates exist on the match and regenerate not requested, return them
+        if (!regenerate && match.aiPotmCandidates) {
+            return res.status(200).json({ success: true, data: match.aiPotmCandidates });
+        }
+
+        // If regenerate requested, ensure caller is a group admin
+        if (regenerate) {
+            const group = await Group.findById(match.group);
+            const member = group.members.find(m => String(m.user) === String(req.user._id));
+            if (!member || member.role !== 'admin') {
+                return res.status(403).json({ success: false, message: 'Only group admins can regenerate AI content' });
+            }
+        }
+
         let aiResult;
         try {
             aiResult = await parseAIJsonResponse(prompt);
         } catch (parseError) {
             if (parseError.message === 'AI_INVALID_FORMAT') {
-                return res.status(500).json({
-                    success: false,
-                    message: 'AI returned invalid format. Please try again.'
-                });
+                return res.status(500).json({ success: false, message: 'AI returned invalid format. Please try again.' });
             }
             throw parseError;
         }
 
-        res.status(200).json({
-            success: true,
-            data: aiResult
-        });
+        try {
+            match.aiPotmCandidates = aiResult;
+            await match.save();
+        } catch (e) {
+            console.warn('Failed to save POTM candidates', e);
+        }
+
+        res.status(200).json({ success: true, data: aiResult });
     } catch (error) {
         next(error);
     }
@@ -491,6 +548,22 @@ Respond in JSON format:
 Return ONLY valid JSON.
 `;
 
+        const regenerate = !!req.body.regenerate;
+
+        // Return cached analytics if available and regeneration not requested
+        if (!regenerate && group.aiSeasonAnalytics && group.aiSeasonAnalytics.data) {
+            return res.status(200).json({ success: true, data: group.aiSeasonAnalytics.data });
+        }
+
+        // If regeneration requested, ensure caller is a group admin
+        if (regenerate) {
+            const member = group.members.find(m => String(m.user) === String(req.user._id));
+            if (!member || member.role !== 'admin') {
+                return res.status(403).json({ success: false, message: 'Only group admins can regenerate AI content' });
+            }
+        }
+
+
         let aiResult;
         try {
             aiResult = await parseAIJsonResponse(prompt);
@@ -504,10 +577,18 @@ Return ONLY valid JSON.
             throw parseError;
         }
 
-        res.status(200).json({
-            success: true,
-            data: aiResult
-        });
+        try {
+            group.aiSeasonAnalytics = {
+                data: aiResult,
+                lastGeneratedAt: new Date(),
+                generatedBy: req.user?._id
+            };
+            await group.save();
+        } catch (e) {
+            console.warn('Failed to save season analytics', e);
+        }
+
+        res.status(200).json({ success: true, data: aiResult });
     } catch (error) {
         next(error);
     }
@@ -565,6 +646,16 @@ Return ONLY valid JSON.
                 });
             }
             throw parseError;
+        }
+
+        try {
+            const subject = `Reminder: RSVP for ${match.venue?.name || 'upcoming match'} on ${new Date(match.date).toLocaleDateString()}`;
+            const rsvpUrl = `${process.env.CLIENT_URL || ''}/rsvp/${match._id}`;
+            const text = aiResult.message + (rsvpUrl ? `\n\nRSVP: ${rsvpUrl}` : '');
+            const html = `<p>${aiResult.message}</p>${rsvpUrl ? `<p><a href="${rsvpUrl}">RSVP here</a></p>` : ''}<p style="font-size:12px;color:#666">(This is an automated reminder from CrickSquad)</p>`;
+            sendEmail({ to: user.email, subject, text, html }).catch(err => console.error('Smart reminder email error:', err));
+        } catch (mailErr) {
+            console.error('Smart reminder mail dispatch failed:', mailErr);
         }
 
         res.status(200).json({

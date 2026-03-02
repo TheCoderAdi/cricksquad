@@ -1,12 +1,12 @@
 import api from './api'
 
 const aiService = {
-    balanceTeams: (matchId) => api.post('/ai/balance-teams', { matchId }),
-    matchSummary: (matchId) => api.post('/ai/match-summary', { matchId }),
-    playerInsight: (playerId, groupId) => api.post('/ai/player-insight', { playerId, groupId }),
-    potmSuggestion: (matchId) => api.post('/ai/potm-suggestion', { matchId }),
-    seasonAnalytics: (groupId) => api.post('/ai/season-analytics', { groupId }),
-    smartReminder: (playerId, matchId) => api.post('/ai/smart-reminder', { playerId, matchId })
+    balanceTeams: (matchId, opts = {}) => api.post('/ai/balance-teams', { matchId, ...opts }),
+    matchSummary: (matchId, opts = {}) => api.post('/ai/match-summary', { matchId, ...opts }),
+    playerInsight: (playerId, groupId, opts = {}) => api.post('/ai/player-insight', { playerId, groupId, ...opts }),
+    potmSuggestion: (matchId, opts = {}) => api.post('/ai/potm-suggestion', { matchId, ...opts }),
+    seasonAnalytics: (groupId, opts = {}) => api.post('/ai/season-analytics', { groupId, ...opts }),
+    smartReminder: (playerId, matchId, opts = {}) => api.post('/ai/smart-reminder', { playerId, matchId, ...opts })
 }
 
 export default aiService
